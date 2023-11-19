@@ -14,15 +14,15 @@ load_dotenv()
 
 def features_and_labels(collection, mode="train"):
     id_list = [
-        mongodb_document["id"]
-        for mongodb_document in collection.find({}, projection={"_id": False, "id": True})
+        mongodb_document["_id"]
+        for mongodb_document in collection.find({}, projection={"_id": True})
     ]
 
     def features_and_labels_generator():
         if mode == "train":
             random.shuffle(id_list)
         for document_id in id_list:
-            mongodb_document = collection.find_one({"id": document_id})
+            mongodb_document = collection.find_one({"_id": document_id})
             label = mongodb_document["category"]
             features = Image.open(io.BytesIO(mongodb_document["data"]))
             yield features, label
