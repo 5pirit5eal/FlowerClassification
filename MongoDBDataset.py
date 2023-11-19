@@ -15,7 +15,7 @@ load_dotenv()
 def features_and_labels(collection, mode="train"):
     id_list = [
         mongodb_document["id"]
-        for mongodb_document in collection.find({}, projection={"_id": False, "id": True}).limit(10)
+        for mongodb_document in collection.find({}, projection={"_id": False, "id": True})
     ]
 
     def features_and_labels_generator():
