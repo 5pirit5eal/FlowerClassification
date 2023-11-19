@@ -7,13 +7,22 @@ from PIL import Image
 import io
 import numpy as np
 import sys
+import random
 
 load_dotenv()
 
 
-def features_and_labels(collection, projection={"_id": False, "category": True, "data": True}):
+def features_and_labels(collection, mode="train"):
+    id_list = [
+        mongodb_document["id"]
+        for mongodb_document in collection.find({}, projection={"_id": False, "id": True}).limit(10)
+    ]
+
     def features_and_labels_generator():
-        for mongodb_document in collection.find({}, projection):
+        if mode == "train":
+            random.shuffle(id_list)
+        for document_id in id_list:
+            mongodb_document = collection.find_one({"id": document_id})
             label = mongodb_document["category"]
             features = Image.open(io.BytesIO(mongodb_document["data"]))
             yield features, label
@@ -59,9 +68,6 @@ def create_dataset(collection, batch_size=3, mode="eval"):
     dataset = dataset.map(conditional_grayscale_to_rgb, name="gray2rgb")
     dataset = dataset.map(resize_and_pad, name="resize")
     dataset = dataset.map(lambda x, y: (x, tf.one_hot(y, n_classes)), name="categorize_label")
-
-    if mode == "train":
-        dataset = dataset.shuffle(buffer_size=min((collection.count_documents({}), 6000)))
 
     # take advantage of multi-threading; 1=AUTOTUNE
     dataset = dataset.batch(batch_size)
