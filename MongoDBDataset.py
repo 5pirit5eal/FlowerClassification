@@ -12,6 +12,18 @@ import random
 load_dotenv()
 
 
+def get_vocab(collection):
+    flower_types = collection.distinct("flower_type")
+
+    # Create a mapping of flower_type to category
+    flower_type_mapping = {}
+    for flower_type in flower_types:
+        flower = collection.find_one({"flower_type": flower_type})
+        flower_type_mapping[flower_type] = flower.get("category", None)
+
+    return flower_type_mapping
+
+
 def features_and_labels(collection, mode="train"):
     id_list = [
         mongodb_document["_id"]
@@ -55,7 +67,7 @@ def resize_and_pad(image, label):
     return image, label
 
 
-def create_dataset(collection, batch_size=3, mode="eval"):
+def create_dataset(collection, batch_size=3, mode="eval") -> tf.data.Dataset:
     dataset = tf.data.Dataset.from_generator(
         features_and_labels(collection),
         output_signature=(
@@ -71,7 +83,7 @@ def create_dataset(collection, batch_size=3, mode="eval"):
 
     # take advantage of multi-threading; 1=AUTOTUNE
     dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(1)
+    dataset = dataset.prefetch(10)
     return dataset
 
 
