@@ -1,5 +1,6 @@
 import base64
 import logging
+import os
 import re
 from io import BytesIO
 from urllib.parse import urlparse
@@ -12,7 +13,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from PIL import Image
 
-from ml_scripts.MongoDBDataset import get_vocab
+from ml_scripts.MongoDBDataset import get_vocab, save_vocab
 import polars as pl
 
 logging.getLogger().setLevel(logging.DEBUG)
@@ -87,7 +88,9 @@ def check_if_correct(conn: sqlite3.Connection, predicted_class: str):
     # display result
     with st.form("Results"):
         st.image(st.session_state.image_url, caption=f"Predicted class: {predicted_class}")
-        correct_prediction = st.checkbox("Is this correct? The please check this box.", value=False)
+        correct_prediction = st.checkbox(
+            "Is this correct? Then please check this box.", value=False
+        )
 
         submitted = st.form_submit_button("Submit")
         if submitted:
@@ -106,37 +109,41 @@ def check_if_correct(conn: sqlite3.Connection, predicted_class: str):
             conn.commit()
 
 
-@st.cache_resource
 def setup():
     """Creates the database table if it doesn't already exist."""
-    category_flower_mapping = get_vocab("flower.db", reverse=True)
+    if not os.path.exists("flower.db"):
+        save_vocab()
 
-    conn = sqlite3.connect("flower.db", check_same_thread=False)
+    st.session_state.category_flower_mapping = get_vocab("flower.db", reverse=True)
+
+    st.session_state.conn = sqlite3.connect("flower.db", check_same_thread=False)
     # load schema from feedback_schema.sql file
     with open("feedback_schema.sql") as feedback_schema_file:
         create_table_statement = feedback_schema_file.read()
 
-    c = conn.cursor()
+    c = st.session_state.conn.cursor()
     c.execute(create_table_statement)
-    conn.commit()
+    st.session_state.conn.commit()
 
     if "image_url" not in st.session_state:
         st.session_state.image_url = ""
 
-    return conn, category_flower_mapping
+    # set flag that setup is not needed anymore
+    st.session_state.setup = True
 
 
 def main():
     """Builds the UI for the app."""
     st.title("Flower Classifier")
     st.write("This app uses a TensorFlow model to classify images of flowers.")
-    sql_conn, category_flower_mapping = setup()
+    if "setup" not in st.session_state:
+        setup()
 
     st.text_input("Enter the URL of an image:", key="url_widget", value="", on_change=submit)
     if st.session_state.image_url:
         image_array = process_image(st.session_state.image_url)
-        predicted_class = make_prediction(image_array, category_flower_mapping)
-        check_if_correct(sql_conn, predicted_class)
+        predicted_class = make_prediction(image_array, st.session_state.category_flower_mapping)
+        check_if_correct(st.session_state.conn, predicted_class)
 
 
 if __name__ == "__main__":
