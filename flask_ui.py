@@ -4,8 +4,7 @@ from PIL import Image
 import requests
 import numpy as np
 from dotenv import load_dotenv
-from pymongo import MongoClient
-from MongoDBDataset import get_vocab
+from ml_scripts.MongoDBDataset import get_vocab
 from io import BytesIO
 import logging
 import re
@@ -20,9 +19,7 @@ app = Flask(__name__)
 # Define the address of your TensorFlow Serving container
 TF_SERVING_URL = "http://localhost:8510/v1/models/flower:predict"
 load_dotenv(override=True)
-client = MongoClient(os.environ["URI"])
-db = client.flowers
-category_flower_mapping = {value: key for key, value in get_vocab(db.test).items()}
+category_flower_mapping = {value: key for key, value in get_vocab("flower.db").items()}
 
 
 # Function to convert image to numpy array

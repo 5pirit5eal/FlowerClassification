@@ -8,3 +8,5 @@ tensorflow==2.14
 polars==0.19.12
 Pillow==10.1.0
 flask==3.0.0
+streamlit
+sqlite3
